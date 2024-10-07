@@ -15,7 +15,7 @@
   "routes": [
     {
       "src": "/api/(.*)",
-      "dest": "/api/index.py"
+      "dest": "/api/"
     },
     {
       "src": "/static/(.*)",
@@ -28,7 +28,7 @@
     }
   ],
   "env": {
-    "DJANGO_SETTINGS_MODULE": "your_project.settings",
+    "DJANGO_SETTINGS_MODULE": "trainomart_backend.settings",
     "SECRET_KEY": "@secret_key",
     "DATABASE_URL": "@database_url",
     "WISE_API_TOKEN": "@wise_api_token",
