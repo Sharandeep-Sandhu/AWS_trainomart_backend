@@ -1,29 +1,13 @@
 {
-  "version": 2,
-  "builds": [
-    {
-      "src": "trainomart_backend/wsgi.py",
-      "use": "@vercel/python"
-    }
-  ],
-  "routes": [
-    {
-      "src": "/api/(.*)",
-      "dest": "trainomart_backend/wsgi.py"
-    },
-    {
-      "src": "/(.*)",
-      "dest": "trainomart_backend/wsgi.py"
-    }
-  ],
-  
-  "env": {
-    "SECRET_KEY": "django-insecure-o_gpi0!&txks(kp1=ubaen4-=)bn_t(=vv0qa5lsf4_x+%eyco",
-    "DEBUG": "False",
-    "DB_NAME": "postgres",
-    "DB_USER": "postgres",
-    "DB_PASSWORD": "root",
-    "DB_HOST": "127.0.0.1",
-    "DB_PORT": "5432"
-  }
+    "builds": [{
+        "src": "trainomart_backend/wsgi.py",
+        "use": "@vercel/python",
+        "config": { "maxLambdaSize": "15mb", "runtime": "python3.9" }
+    }],
+    "routes": [
+        {
+            "src": "/(.*)",
+            "dest": "trainomart_backend/wsgi.py"
+        }
+    ]
 }
