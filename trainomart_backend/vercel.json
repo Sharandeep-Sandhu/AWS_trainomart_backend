@@ -2,29 +2,15 @@
   "version": 2,
   "builds": [
     {
-      "src": "api/index.py",
+      "src": "trainomart_backend/wsgi.py",  // Path to your WSGI file
       "use": "@vercel/python",
       "config": { "maxLambdaSize": "50mb" }
-    },
-    {
-      "src": "frontend/package.json",
-      "use": "@vercel/static-build",
-      "config": { "distDir": "frontend/build" }
     }
   ],
   "routes": [
     {
       "src": "/api/(.*)",
-      "dest": "api/index.py"
-    },
-    {
-      "src": "/static/(.*)",
-      "headers": { "cache-control": "public, max-age=31536000, immutable" },
-      "dest": "/frontend/build/static/$1"
-    },
-    {
-      "src": "/(.*)",
-      "dest": "/frontend/build/index.html"
+      "dest": "trainomart_backend/wsgi.py"  // Route API calls to your WSGI file
     }
   ],
   "env": {
