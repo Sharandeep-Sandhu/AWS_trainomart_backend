@@ -2,38 +2,27 @@
   "version": 2,
   "builds": [
     {
-      "src": "frontend/package.json",
-      "use": "@vercel/static-build",
-      "config": { "distDir": "frontend/build" }
-    },
-    {
-      "src": "api/index.py",
-      "use": "@vercel/python",
-      "config": { "maxLambdaSize": "50mb" }
+      "src": "trainomart_backend/wsgi.py",
+      "use": "@vercel/python"
     }
   ],
   "routes": [
     {
       "src": "/api/(.*)",
-      "dest": "/api/"
-    },
-    {
-      "src": "/static/(.*)",
-      "headers": { "cache-control": "public, max-age=31536000, immutable" },
-      "dest": "/frontend/build/static/$1"
+      "dest": "trainomart_backend/wsgi.py"
     },
     {
       "src": "/(.*)",
-      "dest": "/frontend/build/index.html"
+      "dest": "trainomart_backend/wsgi.py"
     }
   ],
   "env": {
-    "DJANGO_SETTINGS_MODULE": "trainomart_backend.settings",
-    "SECRET_KEY": "@secret_key",
-    "DATABASE_URL": "@database_url",
-    "WISE_API_TOKEN": "@wise_api_token",
-    "STRIPE_SECRET_KEY": "@stripe_secret_key",
-    "DEBUG": "@debug",
-    "ALLOWED_HOSTS": "@allowed_hosts"
+    "SECRET_KEY": "django-insecure-o_gpi0!&txks(kp1=ubaen4-=)bn_t(=vv0qa5lsf4_x+%eyco",
+    "DEBUG": "False",
+    "DB_NAME": "postgres",
+    "DB_USER": "postgres",
+    "DB_PASSWORD": "root",
+    "DB_HOST": "127.0.0.1",
+    "DB_PORT": "5432"
   }
 }
