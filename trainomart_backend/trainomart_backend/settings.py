@@ -147,9 +147,6 @@ CORS_ALLOWED_ORIGINS = [
 
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
-# Stripe (if used)
-STRIPE_SECRET_KEY = config('STRIPE_SECRET_KEY', default='your-stripe-secret-key')
-
 # Wise API Token
 WISE_API_TOKEN = config('WISE_API_TOKEN', default='your-wise-api-token')
 
