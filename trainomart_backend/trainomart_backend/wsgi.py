@@ -23,4 +23,4 @@ application = get_wsgi_application()
 
 # For Vercel, you need to expose `app` or `handler`
 # So we will define it here
-app = application
+handler = application
