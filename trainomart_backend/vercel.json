@@ -17,11 +17,11 @@
     "DJANGO_SETTINGS_MODULE": "trainomart_backend.settings",
     "SECRET_KEY": "@secret_key",
     "DEBUG": "@debug",
-    "DB_NAME": "@db_name",
-    "DB_USER": "@db_user",
-    "DB_PASSWORD": "@db_password",
-    "DB_HOST": "@db_host",
-    "DB_PORT": "@db_port",
+    "DB_NAME": "verceldb",
+    "DB_USER": "default",
+    "DB_PASSWORD": "j3ctwFu8OlHy",
+    "DB_HOST": "ep-shrill-voice-a4re3bw6-pooler.us-east-1.aws.neon.tech",
+    "DB_PORT": "5432",
     "WISE_API_TOKEN": "@wise_api_token",
     "ALLOWED_HOSTS": "@allowed_hosts"
   }
