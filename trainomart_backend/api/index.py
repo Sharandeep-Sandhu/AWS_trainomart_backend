@@ -1,5 +1,3 @@
-# api/index.py
-
 import os
 from serverless_wsgi import handle_request
 from trainomart_backend.wsgi import application
