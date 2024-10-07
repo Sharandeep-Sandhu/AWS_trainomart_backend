@@ -2,7 +2,7 @@
   "version": 2,
   "builds": [
     {
-      "src": "trainomart_backend/wsgi.py",  // Path to your WSGI file
+      "src": "trainomart_backend/wsgi.py", 
       "use": "@vercel/python",
       "config": { "maxLambdaSize": "50mb" }
     }
@@ -10,7 +10,7 @@
   "routes": [
     {
       "src": "/api/(.*)",
-      "dest": "trainomart_backend/wsgi.py"  // Route API calls to your WSGI file
+      "dest": "trainomart_backend/wsgi.py" 
     }
   ],
   "env": {
