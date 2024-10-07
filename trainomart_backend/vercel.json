@@ -15,12 +15,13 @@
   ],
   "env": {
     "DJANGO_SETTINGS_MODULE": "trainomart_backend.settings",
+    "SECRET_KEY": "django-insecure-o_gpi0!&txks(kp1=ubaen4-=)bn_t(=vv0qa5lsf4_x+%eyco",
     "DEBUG": "@debug",
-    "DB_NAME": "@db_name",
-    "DB_USER": "@db_user",
-    "DB_PASSWORD": "@db_password",
-    "DB_HOST": "@db_host",
-    "DB_PORT": "@db_port",
+    "DB_NAME": "postgres",
+    "DB_USER": "postgres",
+    "DB_PASSWORD": "root",
+    "DB_HOST": "127.0.0.1",
+    "DB_PORT": "5432",
     "WISE_API_TOKEN": "@wise_api_token",
     "ALLOWED_HOSTS": "@allowed_hosts"
   }
