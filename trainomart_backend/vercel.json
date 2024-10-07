@@ -16,6 +16,7 @@
       "dest": "trainomart_backend/wsgi.py"
     }
   ],
+  
   "env": {
     "SECRET_KEY": "django-insecure-o_gpi0!&txks(kp1=ubaen4-=)bn_t(=vv0qa5lsf4_x+%eyco",
     "DEBUG": "False",
