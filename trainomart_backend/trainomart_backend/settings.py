@@ -26,8 +26,7 @@ SECRET_KEY = config('SECRET_KEY', default='django-insecure-o_gpi0!&txks(kp1=ubae
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = config('DEBUG', default=True, cast=bool)
 
-ALLOWED_HOSTS = config('.vercel.app', '.now.sh').split(',')
-
+ALLOWED_HOSTS = config('ALLOWED_HOSTS', '.vercel.app', '.now.sh').split(',')
 
 # Application definition
 
@@ -137,6 +136,9 @@ MEDIA_ROOT = BASE_DIR / 'media'
 CORS_ORIGIN_ALLOW_ALL = False  # Set to False for security in production
 CORS_ALLOWED_ORIGINS = [
     "http://localhost:3000",
+    "http://localhost:8000",
+    "https://your-production-domain.vercel.app",
+    "https://your-production-domain.now.sh",
     # Add other origins if needed
 ]
 
