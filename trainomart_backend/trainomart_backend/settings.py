@@ -137,7 +137,7 @@ CORS_ORIGIN_ALLOW_ALL = False  # Set to False for security in production
 CORS_ALLOWED_ORIGINS = [
     "http://localhost:3000",
     "http://localhost:8000",
-    "https://your-production-domain.vercel.app",
+    "https://trainomart-backend.vercel.app",
     "https://your-production-domain.now.sh",
     # Add other origins if needed
 ]
