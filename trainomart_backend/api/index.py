@@ -6,7 +6,4 @@ from trainomart_backend.wsgi import application
 os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'trainomart_backend.settings')
 
 def handler(request, context):
-    return {
-        "statusCode": 200,
-        "body": "Hello from Django on Vercel!"
-    }
+    return handle_request(application, request, context)
