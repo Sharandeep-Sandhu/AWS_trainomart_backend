@@ -15,3 +15,5 @@ os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'trainomart_backend.settings')
 
 # Create the WSGI application
 application = get_wsgi_application()
+
+app = application
