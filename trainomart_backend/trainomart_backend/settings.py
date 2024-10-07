@@ -85,10 +85,10 @@ WSGI_APPLICATION = 'trainomart_backend.wsgi.application'
 DATABASES = {
     'default': {
         'ENGINE': 'django.db.backends.postgresql_psycopg2',
-        'NAME': config('DB_NAME', default='postgres'),
-        'USER': config('DB_USER', default='postgres'),
-        'PASSWORD': config('DB_PASSWORD', default='root'),
-        'HOST': config('DB_HOST', default='127.0.0.1'),
+        'NAME': config('DB_NAME', default='verceldb'),
+        'USER': config('DB_USER', default='default'),
+        'PASSWORD': config('DB_PASSWORD', default='j3ctwFu8OlHy'),
+        'HOST': config('DB_HOST', default='ep-shrill-voice-a4re3bw6-pooler.us-east-1.aws.neon.tech'),
         'PORT': config('DB_PORT', default='5432'),
     }
 }
