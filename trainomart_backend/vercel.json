@@ -15,7 +15,6 @@
   ],
   "env": {
     "DJANGO_SETTINGS_MODULE": "trainomart_backend.settings",
-    "SECRET_KEY": "@secret_key",
     "DEBUG": "@debug",
     "DB_NAME": "@db_name",
     "DB_USER": "@db_user",
