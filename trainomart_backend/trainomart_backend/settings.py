@@ -138,7 +138,7 @@ CORS_ALLOWED_ORIGINS = [
     "http://localhost:3000",
     "http://localhost:8000",
     "https://trainomart-backend.vercel.app",
-    "https://your-production-domain.now.sh",
+    "https://trainomart-backend.now.sh",
     # Add other origins if needed
 ]
 
