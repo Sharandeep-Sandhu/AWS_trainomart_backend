@@ -13,6 +13,7 @@ https://docs.djangoproject.com/en/5.1/ref/settings/
 from pathlib import Path
 import os
 from decouple import config
+from corsheaders.defaults import default_headers 
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
@@ -24,16 +25,53 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 SECRET_KEY = config('SECRET_KEY', default='django-insecure-o_gpi0!&txks(kp1=ubaen4-=)bn_t(=vv0qa5lsf4_x+%eyco')
 
 # SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = config('DEBUG', default=True, cast=bool)
+#DEBUG = config('DEBUG', default=True, cast=bool)
+DEBUG = False  
 
-ALLOWED_HOSTS = ['.vercel.app']
+#AUTH_USER_MODEL = 'traino.SignUp'  # Replace 'traino' with your actual app name
+
+
+ALLOWED_HOSTS = [
+    '*',
+    'test.trainomart.com',
+    'localhost',
+    '*.vercel.app',
+    '43.204.214.252',
+    'trainomart-frontend-latest.vercel.app',
+    'ec2-43-204-214-252.ap-south-1.compute.amazonaws.com',
+    "https://www.trainomart.com"
+]
 
 if DEBUG:
     ALLOWED_HOSTS += ['localhost', '127.0.0.1']
 
+CORS_ALLOW_ALL_ORIGINS = False  # ❌ Don't allow all origins (Security risk)
+CORS_ALLOWED_ORIGINS = [
+    "https://www.trainomart.com",
+    "https://test.trainomart.com",
+    "http://localhost:3000",  # ✅ Add local dev server if needed
+]
+
+CSRF_TRUSTED_ORIGINS = [
+    "https://www.trainomart.com",  # ✅ Allow CSRF requests from frontend
+    "https://test.trainomart.com",
+    "http://localhost:3000",
+]
+
+
+#CSRF_TRUSTED_ORIGINS = ['https://test.trainomart.com']
+SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
+USE_X_FORWARDED_HOST = True
+USE_X_FORWARDED_PORT = True
+SESSION_COOKIE_SECURE = True
+SECURE_SSL_REDIRECT = True
+SESSION_COOKIE_SAMESITE = "None"
+
+CSRF_COOKIE_SECURE = True
+CSRF_COOKIE_HTTPONLY = False  # ✅ Allow frontend access to CSRF token
+CSRF_COOKIE_SAMESITE = "None" 
 
 # Application definition
-
 INSTALLED_APPS = [
     'traino',
     'rest_framework',
@@ -44,9 +82,9 @@ INSTALLED_APPS = [
     'django.contrib.sessions',
     'django.contrib.messages',
     'django.contrib.staticfiles',
-    # 'traino.apps.TrainoConfig',
 ]
 
+# Middleware
 MIDDLEWARE = [
     'django.middleware.security.SecurityMiddleware',
     'corsheaders.middleware.CorsMiddleware',  # Ensure CORS is high in the middleware list
@@ -60,6 +98,26 @@ MIDDLEWARE = [
 
 ROOT_URLCONF = 'trainomart_backend.urls'
 
+
+AUTHENTICATION_BACKENDS = [
+    'django.contrib.auth.backends.ModelBackend',  # Default authentication backend
+]
+
+
+REST_FRAMEWORK = {
+    'DEFAULT_AUTHENTICATION_CLASSES': (
+        'rest_framework.authentication.SessionAuthentication',
+        'rest_framework.authentication.BasicAuthentication',
+        'rest_framework.authentication.TokenAuthentication',
+    ),
+    'DEFAULT_PERMISSION_CLASSES': [
+        'rest_framework.permissions.IsAuthenticated',
+    ]
+}
+	
+
+
+# Templates
 TEMPLATES = [
     {
         'BACKEND': 'django.template.backends.django.DjangoTemplates',
@@ -80,23 +138,23 @@ WSGI_APPLICATION = 'trainomart_backend.wsgi.application'
 
 
 # Database
-# https://docs.djangoproject.com/en/5.1/ref/settings/#databases
-
 DATABASES = {
     'default': {
-        'ENGINE': 'django.db.backends.postgresql_psycopg2',
-        'NAME': config('DB_NAME', default='verceldb'),
-        'USER': config('DB_USER', default='default'),
-        'PASSWORD': config('DB_PASSWORD', default='j3ctwFu8OlHy'),
-        'HOST': config('DB_HOST', default='ep-shrill-voice-a4re3bw6-pooler.us-east-1.aws.neon.tech'),
-        'PORT': config('DB_PORT', default='5432'),
+        'ENGINE': 'django.db.backends.postgresql',
+        'NAME': 'trainomart_db',          # Your database name
+        'USER': 'admin',                  # Your PostgreSQL username
+        'PASSWORD': 'root',                # Your PostgreSQL password
+        'HOST': 'localhost',              # Set to 'localhost' if the database is on the same instance
+        'PORT': '5432',                   # Default PostgreSQL port
     }
 }
+
+#AUTH_USER_MODEL = 'traino.CustomUser'
+#AUTH_USER_MODEL = 'traino.CustomUser'
 
 
 
 # Password validation
-# https://docs.djangoproject.com/en/5.1/ref/settings/#auth-password-validators
 
 AUTH_PASSWORD_VALIDATORS = [
     {
@@ -113,46 +171,59 @@ AUTH_PASSWORD_VALIDATORS = [
     },
 ]
 
-
 # Internationalization
-# https://docs.djangoproject.com/en/5.1/topics/i18n/
-
 LANGUAGE_CODE = 'en-us'
-
 TIME_ZONE = 'UTC'
-
 USE_I18N = True
-
 USE_TZ = True
 
-
 # Static files (CSS, JavaScript, Images)
-# https://docs.djangoproject.com/en/5.1/howto/static-files/
-
 STATIC_URL = '/static/'
-STATICFILES_DIRS = [BASE_DIR / 'static']
-STATIC_ROOT = BASE_DIR / 'staticfiles'
+STATIC_ROOT = os.path.join(BASE_DIR, 'staticfiles')
 
-# Media settings
 MEDIA_URL = '/media/'
-MEDIA_ROOT = BASE_DIR / 'media'
+MEDIA_ROOT = os.path.join(BASE_DIR, 'media')
+
 
 # CORS settings
-CORS_ORIGIN_ALLOW_ALL = False  # Set to False for security in production
-CORS_ALLOWED_ORIGINS = [
-    "http://localhost:3000",
-    "http://localhost:8000",
-    "https://trainomart-backend.vercel.app",
-    "https://trainomart-backend.now.sh",
-    # Add other origins if needed
+#CORS_ALLOWED_ORIGINS = [
+#    "*",
+#    "www.trainomart.com",
+#    "http://localhost:3000",
+#    "http://localhost:8000",
+#    "https://trainomart-frontend-latest.vercel.app",
+#    "https://trainomart-backend.vercel.app",
+#    "https://trainomart-backend.now.sh",
+#    "https://trainomart-frontend.vercel.app",
+#]
+
+#CORS_ALLOW_ALL_ORIGINS = True  # Set to True only for development
+
+CORS_ORIGIN_ALLOW_ALL = True
+
+# Optional: Allow credentials to be included in cross-origin requests
+CORS_ALLOW_CREDENTIALS = True
+
+# Optional: Specify allowed methods if using methods beyond GET, POST
+CORS_ALLOW_METHODS = [
+    'DELETE',
+    'GET',
+    'OPTIONS',
+    'PATCH',
+    'POST',
+    'PUT',
+]
+
+# Optional: Specify allowed headers if using custom headers
+CORS_ALLOW_HEADERS = list(default_headers) + [
+    'contenttype',
+    # Add any other custom headers here
 ]
 
 # Default primary key field type
-# https://docs.djangoproject.com/en/5.1/ref/settings/#default-auto-field
-
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
-# Wise API Token
+# Wise API Token (if needed)
 WISE_API_TOKEN = config('WISE_API_TOKEN', default='your-wise-api-token')
 
 # Additional configurations...
@@ -171,3 +242,4 @@ LOGGING = {
         },
     },
 }
+

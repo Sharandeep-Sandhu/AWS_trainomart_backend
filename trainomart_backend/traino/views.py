@@ -1,23 +1,401 @@
 from django.shortcuts import render
 from django.http import HttpResponse
-from .serializers import CourseSerializer, BlogSerializer, LeadSerializer, StudentsSerializer, ContactMessageSerializer, PaymentSerializer
-from rest_framework import viewsets
+from .serializers import CourseSerializer, BlogSerializer, LeadSerializer, ContactMessageSerializer, PaymentSerializer, BusinessLeadsSerializer, CourseRegistrationSerializer, InstructorSerializer, StudentSerializer, ClassSerializer, SignUpSerializer, LoginSerializer
+from rest_framework import viewsets, permissions
 from rest_framework.decorators import action
 from rest_framework.response import Response
-from .models import Course, Blog, Leads, Students, ContactMessage, Payment
+from .models import Course, Blog, Leads, ContactMessage, Payment, BusinessLeads, CourseRegistration, Instructor, Student, Class, SignUp
 from django.shortcuts import get_object_or_404
 from rest_framework import filters, status
 from rest_framework.decorators import api_view
+from rest_framework import mixins
+from urllib.parse import unquote
+from django.contrib.auth.hashers import make_password
+from rest_framework.views import APIView
+from django.views.decorators.csrf import csrf_exempt
+import json
+import requests
+from django.utils import timezone
+from rest_framework.parsers import MultiPartParser, FormParser
+from django.utils.timezone import now, timedelta
+from django.http import JsonResponse
+from .permissions import IsStudent, IsInstructor, IsAdmin
+from django.contrib.auth.models import User 
+from django.contrib.auth import authenticate, get_user_model
+from rest_framework.authtoken.models import Token
+from rest_framework.decorators import authentication_classes, permission_classes
+from rest_framework.authentication import SessionAuthentication, BasicAuthentication
+from rest_framework.permissions import AllowAny
+from rest_framework import generics
+from django.contrib.auth import login, logout
+from django.middleware.csrf import get_token
+
 
 # Create your views here.
 
+def get_csrf_token(request):
+    csrf_token = get_token(request)
+    response = JsonResponse({"csrf_token": csrf_token})
+    response.set_cookie("csrftoken", csrf_token, secure=True, httponly=False, samesite="None")
+    return response
+
+@api_view(['GET'])
+@permission_classes([AllowAny])
+def student_profile(request):
+    print("data", request.user)
+    """Fetch the profile of the logged-in student."""
+    try:
+        student = Student.objects.get(email_id=request.user.email)  # Assuming email_id is unique
+        serializer = StudentSerializer(student)
+        return Response(serializer.data)
+    except Student.DoesNotExist:
+        return Response({"error": "Student not found"}, status=404)
+
+
+def dashboard_data(request):
+    permission_classes = [AllowAny]
+    # Count total instructors
+    total_instructors = Instructor.objects.count()
+
+    # Count total classes
+    total_classes = Class.objects.count()
+
+    students_enrolled = Student.objects.count()
+    return JsonResponse({
+        "total_instructors": total_instructors,
+        "total_classes": total_classes,
+        "students_enrolled": students_enrolled
+    })
+
+
+
+class SignUpView(APIView):
+    def post(self, request):
+        serializer = SignUpSerializer(data=request.data)
+        if serializer.is_valid():
+            serializer.save()
+            return Response({"message": "User created successfully"}, status=status.HTTP_201_CREATED)
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+class UserListView(APIView):
+    def get(self, request):
+        users = SignUp.objects.all()  # ✅ Get all users
+        serializer = SignUpSerializer(users, many=True)
+        return Response(serializer.data, status=status.HTTP_200_OK)
+
+class RetrieveUserView(APIView):
+    """ Get user by ID """
+    def get(self, request, user_id):
+        user = get_object_or_404(SignUp, id=user_id)
+        serializer = SignUpSerializer(user)
+        return Response(serializer.data, status=status.HTTP_200_OK)
+
+class RetrieveUpdateUserView(APIView):
+    """ Get and update user by ID """
+    def get(self, request, user_id):
+        user = get_object_or_404(SignUp, id=user_id)
+        serializer = SignUpSerializer(user)
+        return Response(serializer.data, status=status.HTTP_200_OK)
+
+    def put(self, request, user_id):
+        user = get_object_or_404(SignUp, id=user_id)
+        serializer = SignUpSerializer(user, data=request.data, partial=True)  # Allows partial updates
+        if serializer.is_valid():
+            serializer.save()
+            return Response({"message": "User updated successfully"}, status=status.HTTP_200_OK)
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+
+class UpdateUserRoleView(APIView):
+    def patch(self, request, user_id):
+        user = get_object_or_404(SignUp, id=user_id)  # ✅ Find user by ID
+        new_role = request.data.get("role")
+
+        if new_role not in ["admin", "student", "instructor"]:
+            return Response({"error": "Invalid role"}, status=status.HTTP_400_BAD_REQUEST)
+
+        user.role = new_role
+        user.save()
+        return Response({"message": "User role updated successfully"}, status=status.HTTP_200_OK)
+
+
+class LoginView(APIView):
+    def post(self, request):
+        serializer = LoginSerializer(data=request.data)
+        if serializer.is_valid():
+            user = serializer.validated_data
+
+            # Manually create a session
+            request.session["user_id"] = user.id
+            request.session["username"] = user.username
+            request.session["role"] = user.role
+            request.session.save()
+
+            csrf_token = get_token(request)  # Generate CSRF token
+
+            response = Response({
+                "message": "Login successful",
+                "id": user.id,
+                "username": user.username,
+                "role": user.role,
+                "csrf_token": csrf_token,
+            }, status=status.HTTP_200_OK)
+
+            # Set session & CSRF cookies
+            response.set_cookie("csrftoken", csrf_token, secure=True, httponly=False, samesite="None")
+            response.set_cookie("sessionid", request.session.session_key, secure=True, httponly=True, samesite="None")
+
+            return response
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+class LogoutView(APIView):
+    def post(self, request):
+        logout(request)  # Clear session
+        response = Response({"message": "Logged out successfully"}, status=status.HTTP_200_OK)
+        response.delete_cookie("sessionid")
+        return response
+
+#class StudentViewSet(viewsets.ModelViewSet):
+#    permission_classes = [AllowAny]
+#    queryset = Student.objects.all()
+#    serializer_class = StudentSerializer
+
+#    def create(self, request, *args, **kwargs):
+        """Prevent duplicate student entries."""
+#        email_id = request.data.get("email_id")
+#        if Student.objects.filter(email_id=email_id).exists():
+#            return Response({"error": "Student with this email already exists"}, status=status.HTTP_400_BAD_REQUEST)
+#        return super().create(request, *args, **kwargs)
+
+class StudentViewSet(viewsets.ModelViewSet):
+    permission_classes = [AllowAny]
+    queryset = Student.objects.all()
+    serializer_class = StudentSerializer
+    parser_classes = (MultiPartParser, FormParser)
+
+    def create(self, request, *args, **kwargs):
+        """Prevent duplicate student entries."""
+        email_id = request.data.get("email_id")
+        if Student.objects.filter(email_id=email_id).exists():
+            return Response({"error": "Student with this email already exists"}, status=status.HTTP_400_BAD_REQUEST)
+        return super().create(request, *args, **kwargs)
+
+    def retrieve(self, request, pk=None):
+        """Get student by ID"""
+        student = get_object_or_404(Student, pk=pk)
+        serializer = self.get_serializer(student)
+        return Response(serializer.data, status=status.HTTP_200_OK)
+
+    def update(self, request, pk=None):
+        """Update student by ID, handling file uploads"""
+        student = get_object_or_404(Student, pk=pk)
+
+        # ✅ Merge request data with request.FILES for file uploads
+        data = request.data.copy()
+        if 'user_image' in request.FILES:
+            data['user_image'] = request.FILES['user_image']
+
+        serializer = self.get_serializer(student, data=data, partial=True)
+
+        if serializer.is_valid():
+            serializer.save()
+            return Response(serializer.data, status=status.HTTP_200_OK)
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+class EnrolledClassesView(APIView):
+    """Get all classes enrolled by a SignUp user"""
+
+    def get(self, request, user_id):
+        signup_user = get_object_or_404(SignUp, id=user_id)
+
+        # Ensure the user is a student and has a linked Student profile
+        if signup_user.role != "student" or not signup_user.student_profile:
+            return Response({"error": "User is not a student or has no profile"}, status=status.HTTP_400_BAD_REQUEST)
+
+        # Get all classes where the student is enrolled
+        enrolled_classes = Class.objects.filter(students=signup_user.student_profile)
+
+        serializer = ClassSerializer(enrolled_classes, many=True)
+        return Response(serializer.data, status=status.HTTP_200_OK)
+
+
+class ClassViewSet(viewsets.ModelViewSet):
+    permission_classes = [AllowAny]
+    queryset = Class.objects.all()
+    serializer_class = ClassSerializer
+    parser_classes = (MultiPartParser, FormParser)
+
+    def create(self, request, *args, **kwargs):
+        """Create a new class using SignUp instead of Student."""
+        data = request.data.copy()
+
+        course_id = data.get("course")
+        instructor_id = data.get("instructor")
+
+        if not course_id or not instructor_id:
+            return Response({"error": "Course and Instructor IDs are required"}, status=status.HTTP_400_BAD_REQUEST)
+
+        try:
+            course = Course.objects.get(id=course_id)
+            instructor = Instructor.objects.get(id=instructor_id)
+        except (Course.DoesNotExist, Instructor.DoesNotExist) as e:
+            return Response({"error": f"Invalid course or instructor ID: {e}"}, status=status.HTTP_400_BAD_REQUEST)
+
+        class_instance = Class(
+            course=course,
+            instructor=instructor,
+            class_date=data.get("class_date"),
+            class_joining_link=data.get("class_joining_link"),
+        )
+
+        # Handle students (ManyToManyField using SignUp model)
+        student_ids = [data.get(f"students[{i}]") for i in range(len(data.keys())) if f"students[{i}]" in data]
+
+        if student_ids:
+            students = SignUp.objects.filter(id__in=student_ids)
+            if students.count() != len(student_ids):
+                return Response({"error": "Some student IDs are invalid"}, status=status.HTTP_400_BAD_REQUEST)
+
+            class_instance.save()
+            class_instance.students.set(students)  # Assign students to class after saving
+
+        study_material = request.FILES.get('study_material')
+        if study_material:
+            class_instance.study_material = study_material
+
+        class_instance.save()
+
+        return Response({
+            "id": class_instance.id,
+            "course": class_instance.course.id,
+            "instructor": class_instance.instructor.id,
+            "class_date": class_instance.class_date,
+            "class_joining_link": class_instance.class_joining_link,
+            "students": [student.id for student in class_instance.students.all()],
+            "study_material": class_instance.study_material.url if class_instance.study_material else None,
+        }, status=status.HTTP_201_CREATED)
+
+    def retrieve(self, request, *args, **kwargs):
+        """Get a class and show payment status for each student"""
+        instance = self.get_object()
+        serializer = self.get_serializer(instance)
+        payment_status = instance.get_student_payment_status()
+        data = serializer.data
+        data['student_payment_status'] = payment_status
+        return Response(data)
+
+    def update(self, request, *args, **kwargs):
+        """Update class details including course, instructor, date, and students from SignUp."""
+        instance = self.get_object()
+        update_data = request.data.copy()
+
+        if 'course' in update_data:
+            course_data = update_data.pop('course')
+            if isinstance(course_data, list):
+                course_data = course_data[0]
+            try:
+                course = Course.objects.get(id=course_data)
+                instance.course = course
+            except Course.DoesNotExist:
+                return Response({"error": "Course not found"}, status=status.HTTP_400_BAD_REQUEST)
+
+        if 'instructor' in update_data:
+            instructor_data = update_data.pop('instructor')
+            if isinstance(instructor_data, list):
+                instructor_data = instructor_data[0]
+            try:
+                instructor = Instructor.objects.get(id=instructor_data)
+                instance.instructor = instructor
+            except Instructor.DoesNotExist:
+                return Response({"error": "Instructor not found"}, status=status.HTTP_400_BAD_REQUEST)
+
+        # Handle updating students from SignUp
+        if 'students' in update_data:
+            students_data = update_data.pop('students')
+            instance.students.clear()
+            for student_id in students_data:
+                try:
+                    student_instance = SignUp.objects.get(id=student_id)
+                    instance.students.add(student_instance)
+                except SignUp.DoesNotExist:
+                    return Response({"error": f"Student with ID {student_id} not found"}, status=status.HTTP_400_BAD_REQUEST)
+
+        for key, value in update_data.items():
+            setattr(instance, key, value)
+        instance.save()
+
+        return Response({
+            "message": "Class updated successfully",
+            "data": self.get_serializer(instance).data
+        }, status=status.HTTP_200_OK)
+
+
+
+class StudentPaymentStatusView(APIView):
+    permission_classes = [AllowAny]
+
+    def get(self, request, email):
+        """Fetch payment status for a specific student using SignUp."""
+        student = get_object_or_404(SignUp, email=email)
+        leads = Leads.objects.filter(email=email)
+
+        if not leads.exists():
+            return Response({"message": "No lead found for this email"}, status=status.HTTP_404_NOT_FOUND)
+
+        payment_info = {lead.course_name: lead.payment_status for lead in leads}
+        return Response({"student_email": email, "payment_status": payment_info})
+
+
+class InstructorViewSet(viewsets.ModelViewSet):
+    permission_classes = [AllowAny]
+    queryset = Instructor.objects.all()
+    serializer_class = InstructorSerializer
+
+class InstructorCreateView(APIView):
+    permission_classes = [AllowAny]
+    def post(self, request):
+        serializer = InstructorSerializer(data=request.data)
+        if serializer.is_valid():
+            serializer.save()
+            return Response(serializer.data, status=status.HTTP_201_CREATED)
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+class InstructorListView(APIView):
+    permission_classes = [AllowAny]
+    def get(self, request):
+        instructors = Instructor.objects.all()
+        serializer = InstructorSerializer(instructors, many=True)
+        return Response(serializer.data)
+
 
 class CourseViewSet(viewsets.ReadOnlyModelViewSet):
+    permission_classes = [AllowAny]
     queryset = Course.objects.all()
     serializer_class = CourseSerializer
     filter_backends = [filters.SearchFilter]
-    search_fields = ['course_name']  # Allows search by course name
+    search_fields = ['course_name', 'tags']  # Allows search by course name
 
+
+    def create(self, request, *args, **kwargs):
+        """
+        Create a new course.
+        """
+        serializer = self.get_serializer(data=request.data)
+        if serializer.is_valid():
+            serializer.save()  # Save the new course to the database
+            return Response(serializer.data, status=status.HTTP_201_CREATED)  # Return the created course data
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)  # Return errors if invalid data is provided
+
+    @action(detail=False, methods=['get'], url_path='slug/(?P<slug>[^/.]+)')
+    def get_course_by_slug(self, request, slug=None):
+        print(f"Received request for slug: {slug}")  
+        try:
+            course = Course.objects.get(slug=slug)  # Assumes you have a 'slug' field in Course model
+            serializer = self.get_serializer(course)
+            return Response(serializer.data, status=status.HTTP_200_OK)
+        except Course.DoesNotExist:
+            return Response({"error": "Course not found"}, status=status.HTTP_404_NOT_FOUND)
+    
     @action(detail=False, methods=['get'])
     def featured(self, request):
         """Filter courses by whether they are featured"""
@@ -28,15 +406,17 @@ class CourseViewSet(viewsets.ReadOnlyModelViewSet):
     @action(detail=False, methods=['get'], url_path='limited')
     def get_limited_courses(self, request):
         """Get a limited number of courses using a query parameter 'limit'"""
-        limit = request.query_params.get('limit', 5)  # Default to 5 courses
+        print("get_limited_courses called")
+        limit = request.query_params.get('limit', 8)  # Default to 8 courses
         try:
-            limit = int(limit)
+            limit = int(limit)  # Ensure the limit is an integer
         except ValueError:
             return Response({"error": "Invalid limit value"}, status=status.HTTP_400_BAD_REQUEST)
         
         queryset = Course.objects.all().order_by('-id')[:limit]
         serializer = self.get_serializer(queryset, many=True)
         return Response(serializer.data)
+
 
     @action(detail=True, methods=['get'], url_path='custom-get')
     def custom_get_course_by_id(self, request, pk=None):
@@ -60,12 +440,29 @@ class CourseViewSet(viewsets.ReadOnlyModelViewSet):
         return Response({'error': 'No course name provided'}, status=status.HTTP_400_BAD_REQUEST)
 
     
-    
+
+
 class BlogViewSet(viewsets.ReadOnlyModelViewSet):
+    permission_classes = [AllowAny]
     queryset = Blog.objects.all()
     serializer_class = BlogSerializer
 
+
+class BlogDetailView(APIView):
+    permission_classes = [AllowAny]
+    def get(self, request, slug, *args, **kwargs):
+        try:
+            blog = Blog.objects.get(slug=slug)
+        except Blog.DoesNotExist:
+            logger.error(f"Blog with slug '{slug}' not found.")
+            return Response({"detail": "Not found."}, status=status.HTTP_404_NOT_FOUND)
+
+        serializer = BlogSerializer(blog)
+        return Response(serializer.data)
+
+
 class LeadViewSet(viewsets.ModelViewSet):
+    permission_classes = [AllowAny]
     queryset = Leads.objects.all()
     serializer_class = LeadSerializer
 
@@ -76,11 +473,10 @@ class LeadViewSet(viewsets.ModelViewSet):
             return Response(serializer.data, status=status.HTTP_201_CREATED)
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
-class StudentsViewSet(viewsets.ReadOnlyModelViewSet):
-    queryset = Students.objects.all()
-    serializer_class = StudentsSerializer
+
 
 class ContactMessageViewSet(viewsets.ModelViewSet):
+    permission_classes = [AllowAny]
     queryset = ContactMessage.objects.all()
     serializer_class = ContactMessageSerializer
 
@@ -91,79 +487,120 @@ class ContactMessageViewSet(viewsets.ModelViewSet):
             return Response(serializer.data, status=status.HTTP_201_CREATED)
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
-# class CreatePayment(APIView):
-#     def post(self, request):
-#         serializer = PaymentSerializer(data=request.data)
-#         if serializer.is_valid():
-#             user_email = serializer.validated_data['user_email']
-#             amount = serializer.validated_data['amount']
-#             currency = serializer.validated_data['currency']
 
-#             # Create a transfer quote
-#             quote_url = 'https://api.sandbox.transferwise.com/v1/quotes'
-#             quote_data = {
-#                 "sourceCurrency": "USD",  # Replace with your source currency
-#                 "targetCurrency": currency,
-#                 "sourceAmount": float(amount),
-#                 "type": "BALANCE_PAYOUT",
-#             }
-#             headers = {
-#                 'Authorization': f'Bearer {settings.WISE_API_TOKEN}',
-#                 'Content-Type': 'application/json',
-#             }
-#             quote_response = requests.post(quote_url, json=quote_data, headers=headers)
-#             if quote_response.status_code != 201:
-#                 return Response({"error": "Failed to create quote."}, status=status.HTTP_400_BAD_REQUEST)
-#             quote = quote_response.json()
-
-#             # Create a transfer
-#             transfer_url = 'https://api.sandbox.transferwise.com/v1/transfers'
-#             transfer_data = {
-#                 "targetAccount": "your_target_account_id",  # Replace with your target account ID
-#                 "quoteUuid": quote['id'],
-#                 "customerTransactionId": "unique_transaction_id",  # Generate unique ID
-#                 "details": {
-#                     "reference": "Payment for Order #1234",
-#                     "transferPurpose": "verification.transfers.purpose.pay bills",  # Adjust as needed
-#                 }
-#             }
-#             transfer_response = requests.post(transfer_url, json=transfer_data, headers=headers)
-#             if transfer_response.status_code != 201:
-#                 return Response({"error": "Failed to create transfer."}, status=status.HTTP_400_BAD_REQUEST)
-#             transfer = transfer_response.json()
-
-#             # Fund the transfer if needed (depends on Wise API setup)
-#             # This step may vary based on your account setup
-
-#             # Save to database
-#             payment = Payment.objects.create(
-#                 payment_id=transfer['id'],
-#                 user_email=user_email,
-#                 amount=amount,
-#                 currency=currency,
-#                 status=transfer['status'],
-#             )
-
-#             return Response({"payment_id": payment.payment_id, "status": payment.status}, status=status.HTTP_201_CREATED)
-#         else:
-#             return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
-
-# class WebhookHandler(APIView):
-#     def post(self, request):
-#         # Handle webhook data from Wise
-#         # Verify the webhook signature if provided
-#         data = request.data
-#         payment_id = data.get('transferUuid')
-#         status_update = data.get('status')
-
-#         try:
-#             payment = Payment.objects.get(payment_id=payment_id)
-#             payment.status = status_update
-#             payment.save()
-#             return Response({"message": "Payment status updated."}, status=status.HTTP_200_OK)
-#         except Payment.DoesNotExist:
-#             return Response({"error": "Payment not found."}, status=status.HTTP_404_NOT_FOUND)
-
+class BusinessLeadsViewSet(mixins.CreateModelMixin, viewsets.GenericViewSet):
+    permission_classes = [AllowAny]
+    queryset = BusinessLeads.objects.all()
+    serializer_class = BusinessLeadsSerializer
 
 def index(request):
+
     return HttpResponse("Hello, world. You're at the trainomart index.")
+
+
+
+
+RECAPTCHA_SECRET_KEY = '6LfSCsIqAAAAAMJ5zltPY2tAT1htkB85jxwsVUKW'  # Add your reCAPTCHA secret key here
+
+class ContactMessageViewSet(viewsets.ModelViewSet):
+    permission_classes = [AllowAny]
+    queryset = ContactMessage.objects.all()
+    serializer_class = ContactMessageSerializer
+
+    def create(self, request, *args, **kwargs):
+        captcha_token = request.data.get("captchaToken")
+
+        # Verify the reCAPTCHA token with Google
+        captcha_response = requests.post(
+            'https://www.google.com/recaptcha/api/siteverify',
+            data={
+                'secret': RECAPTCHA_SECRET_KEY,
+                'response': captcha_token,
+            }
+        )
+        captcha_data = captcha_response.json()
+
+        if not captcha_data.get("success"):
+            return Response(
+                {"error": "reCAPTCHA verification failed"},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+        serializer = self.get_serializer(data=request.data)
+        if serializer.is_valid():
+            self.perform_create(serializer)
+            return Response(serializer.data, status=status.HTTP_201_CREATED)
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+
+class CourseRegistrationView(APIView):
+    permission_classes = [AllowAny]
+    def get(self, request):
+        registrations = CourseRegistration.objects.all()
+        serializer = CourseRegistrationSerializer(registrations, many=True)
+        return Response(serializer.data)
+
+    def post(self, request):
+        serializer = CourseRegistrationSerializer(data=request.data)
+        if serializer.is_valid():
+            serializer.save()
+            return Response(serializer.data, status=status.HTTP_201_CREATED)
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+def sitemap_data(request):
+    permission_classes = [AllowAny]
+    # Base URL for your site
+    base_url = 'https://www.trainomart.com'
+
+    # Get all courses and blogs from the database
+    courses = Course.objects.all()
+    blogs = Blog.objects.all()
+
+    # Create a list for sitemap entries
+    sitemap_entries = []
+
+    # Add static routes
+    sitemap_entries.append({
+        'url': base_url + '/',
+        'lastModified': timezone.now(),
+        'priority': 1.0,
+    })
+    sitemap_entries.append({
+        'url': base_url + '/login',
+        'lastModified': timezone.now(),
+        'priority': 0.8,
+    })
+
+    # Add dynamic routes for courses
+    for course in courses:
+        sitemap_entries.append({
+            'url': f"{base_url}/courses/{course.slug}",
+            'lastModified': course.updated_at,  # Assuming your Course model has an 'updated_at' field
+            'priority': 0.8,
+        })
+
+    # Add dynamic routes for blogs
+    for blog in blogs:
+        sitemap_entries.append({
+            'url': f"{base_url}/blogs/{blog.slug}",
+            'lastModified': blog.updated_at,  # Assuming your Blog model has an 'updated_at' field
+            'priority': 0.8,
+        })
+
+    # Generate XML sitemap content
+    xml_content = '<?xml version="1.0" encoding="UTF-8"?>'
+    xml_content += '<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">'
+
+    for entry in sitemap_entries:
+        xml_content += f'''
+            <url>
+                <loc>{entry["url"]}</loc>
+                <lastmod>{entry["lastModified"].date()}</lastmod>
+                <priority>{entry["priority"]}</priority>
+            </url>
+        '''
+
+    xml_content += '</urlset>'
+
+    # Return the sitemap XML response
+    return HttpResponse(xml_content, content_type='application/xml')
