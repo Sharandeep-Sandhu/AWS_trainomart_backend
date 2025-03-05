@@ -11,7 +11,6 @@ from phonenumber_field.modelfields import PhoneNumberField
 
 class Course(models.Model):
     course_name = models.CharField(max_length=255)
-#    slug = models.SlugField(unique=True)
     course_image = models.ImageField(upload_to='courses/')  # Ensure you have Pillow installed
     description = models.TextField(max_length=500000)
     course_content = models.TextField(max_length=500000)
@@ -30,10 +29,10 @@ class Course(models.Model):
     faq = models.TextField(max_length=500000, blank=True, null=True)
     buy_button_id = models.CharField(max_length=344, blank=True, null=True)
     updated_at = models.DateTimeField(auto_now=True)
-    # New fields for SEO meta tags
     meta_title = models.CharField(max_length=2555, help_text="Title for SEO and social sharing", null=True, blank=True)
     meta_description = models.TextField(max_length=5000, help_text="Description for SEO and social sharing", null=True, blank=True)
     slug = models.SlugField(max_length=250, unique=True, blank=True, null=True)
+    Canonical_tag = models.CharField(max_length=2555, help_text="Canonical for SEO and social sharing", null=True, blank=True)
 
     def save(self, *args, **kwargs):
         if not self.slug:
@@ -54,7 +53,8 @@ class Blog(models.Model):
     updated_at = models.DateTimeField(auto_now=True)
     meta_title = models.CharField(max_length=2555, help_text="Title for SEO and social sharing", null=True, blank=True)
     meta_description = models.TextField(max_length=5000, help_text="Description for SEO and social sharing", null=True, blank=True)
-
+    Canonical_tag = models.CharField(max_length=2555, help_text="Canonical for SEO and social sharing", null=True, blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)  # Automatically sets when first created
 
     def save(self, *args, **kwargs):
         if not self.slug:
@@ -118,31 +118,36 @@ class CourseRegistration(models.Model):
         return f"{self.email} - {self.course_name}"
 
 
-class Instructor(models.Model):
-    name = models.CharField(max_length=255)
-    phone = models.CharField(max_length=15)
-    email = models.EmailField(max_length=255)
-    rate = models.DecimalField(max_digits=10, decimal_places=2)
-    address = models.TextField()
-    skill_set = models.TextField()
+# class Instructor(models.Model):
+#     name = models.CharField(max_length=255)
+#     phone = models.CharField(max_length=15)
+#     email = models.EmailField(max_length=255)
+#     rate = models.DecimalField(max_digits=10, decimal_places=2)
+#     address = models.TextField()
+#     skill_set = models.TextField()
 
-    def __str__(self):
-        return self.name
+#     def __str__(self):
+#         return self.name
 
-class Student(models.Model):
-    first_name = models.CharField(max_length=100)
-    last_name = models.CharField(max_length=100)
-    email_id = models.EmailField(unique=True)
-    address = models.TextField(blank=True, null=True)
-    phone_number = models.CharField(max_length=150)
-    alternative_phone_number = models.CharField(max_length=150, blank=True, null=True)
-    alternative_email = models.EmailField(blank=True, null=True)
-    company = models.TextField(max_length=255, blank=True, null=True)
-    experience = models.TextField(blank=True, null=True)
-    student_image = models.ImageField(upload_to='student_images/', blank=True, null=True)  # ✅ Image Field Added
+# class Student(models.Model):
+#     first_name = models.CharField(max_length=100)
+#     last_name = models.CharField(max_length=100)
+#     email_id = models.EmailField(unique=True)
+#     address = models.TextField(blank=True, null=True)
+#     phone_number = models.CharField(max_length=150)
+#     alternative_phone_number = models.CharField(max_length=150, blank=True, null=True)
+#     alternative_email = models.EmailField(blank=True, null=True)
+#     company = models.TextField(max_length=255, blank=True, null=True)
+#     experience = models.TextField(blank=True, null=True)
+#     student_image = models.ImageField(upload_to='student_images/', blank=True, null=True)  # ✅ Image Field Added
 
-    def __str__(self):
-        return f"{self.first_name} {self.last_name}"
+#     # Instructor Feilds
+#     rate = models.DecimalField(max_digits=10, decimal_places=2)
+#     address = models.TextField()
+#     skill_set = models.TextField()
+
+#     def __str__(self):
+#         return f"{self.first_name} {self.last_name}"
 
 
 
@@ -158,19 +163,27 @@ class SignUp(models.Model):
     phone_number = models.CharField(max_length=15)
     password = models.CharField(max_length=255)  # Store hashed passwords!
     role = models.CharField(max_length=20, choices=ROLE_CHOICES, default='student')
-    alternative_phone_number = models.CharField(max_length=150, blank=True, null=True)
-    alternative_email = models.EmailField(blank=True, null=True)
-    company = models.TextField(max_length=255, blank=True, null=True)
-    experience = models.TextField(blank=True, null=True)
-    user_image = models.ImageField(upload_to='student_images/', blank=True, null=True) 
-    student_profile = models.OneToOneField(Student, on_delete=models.CASCADE, null=True, blank=True, related_name="signup_user")
+    
+    # Student Fields
+    student_alternative_phone_number = models.CharField(max_length=150, blank=True, null=True)
+    student_alternative_email = models.EmailField(blank=True, null=True)
+    student_company = models.TextField(max_length=255, blank=True, null=True)
+    student_experience = models.TextField(blank=True, null=True)
+    student_image = models.ImageField(upload_to='student_images/', blank=True, null=True) 
 
+
+    # Instructor Fields
+    rate = models.DecimalField(max_digits=10, decimal_places=2, blank=True, null=True)
+    address = models.TextField(blank=True, null=True)
+    skill_set = models.TextField(blank=True, null=True)
+    
     def __str__(self):
         return f"{self.username} - {self.role}"
 
 class Class(models.Model):
-    students = models.ManyToManyField(SignUp, related_name='classes', limit_choices_to={'role': 'student'})
-    instructor = models.ForeignKey(Instructor, on_delete=models.CASCADE, related_name='classes', blank=True, null=True)
+    class_name = models.CharField(max_length=500)
+    students = models.ManyToManyField(SignUp, related_name="enrolled_classes")
+    instructor = models.ForeignKey(SignUp, on_delete=models.CASCADE, related_name='classes', blank=True, null=True)
     course = models.ForeignKey(Course, on_delete=models.CASCADE, related_name='classes', blank=True, null=True)
     class_date = models.DateTimeField(blank=True, null=True)
     study_material = models.FileField(upload_to='study_materials/', blank=True, null=True)

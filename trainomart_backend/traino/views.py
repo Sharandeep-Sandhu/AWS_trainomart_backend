@@ -1,10 +1,10 @@
 from django.shortcuts import render
 from django.http import HttpResponse
-from .serializers import CourseSerializer, BlogSerializer, LeadSerializer, ContactMessageSerializer, PaymentSerializer, BusinessLeadsSerializer, CourseRegistrationSerializer, InstructorSerializer, StudentSerializer, ClassSerializer, SignUpSerializer, LoginSerializer
+from .serializers import CourseSerializer, BlogSerializer, LeadSerializer, ContactMessageSerializer, PaymentSerializer, BusinessLeadsSerializer, CourseRegistrationSerializer, ClassSerializer, SignUpSerializer, LoginSerializer #, InstructorSerializer, StudentSerializer
 from rest_framework import viewsets, permissions
 from rest_framework.decorators import action
 from rest_framework.response import Response
-from .models import Course, Blog, Leads, ContactMessage, Payment, BusinessLeads, CourseRegistration, Instructor, Student, Class, SignUp
+from .models import Course, Blog, Leads, ContactMessage, Payment, BusinessLeads, CourseRegistration, Class, SignUp #, Instructor, Student
 from django.shortcuts import get_object_or_404
 from rest_framework import filters, status
 from rest_framework.decorators import api_view
@@ -13,6 +13,7 @@ from urllib.parse import unquote
 from django.contrib.auth.hashers import make_password
 from rest_framework.views import APIView
 from django.views.decorators.csrf import csrf_exempt
+import secrets 
 import json
 import requests
 from django.utils import timezone
@@ -43,24 +44,34 @@ def get_csrf_token(request):
 @permission_classes([AllowAny])
 def student_profile(request):
     print("data", request.user)
+
     """Fetch the profile of the logged-in student."""
     try:
-        student = Student.objects.get(email_id=request.user.email)  # Assuming email_id is unique
-        serializer = StudentSerializer(student)
+        signup_user = get_object_or_404(SignUp, email=request.user.email)
+
+        # Ensure student profile exists
+        if not signup_user.student_profile:
+            signup_user.student_profile = StudentProfile.objects.create(user=signup_user)
+            print("✅ Created missing student profile:", signup_user.student_profile)
+
+        serializer = StudentSerializer(signup_user.student_profile)
         return Response(serializer.data)
-    except Student.DoesNotExist:
-        return Response({"error": "Student not found"}, status=404)
 
+    except Exception as e:
+        return Response({"error": str(e)}, status=400)
 
+@api_view(['GET'])
+@permission_classes([AllowAny])
 def dashboard_data(request):
-    permission_classes = [AllowAny]
-    # Count total instructors
-    total_instructors = Instructor.objects.count()
-
+    # Count total instructors from SignUp table
+    total_instructors = SignUp.objects.filter(role='instructor').count()
+    
+    # Count total students from SignUp table
+    students_enrolled = SignUp.objects.filter(role='student').count()
+    
     # Count total classes
     total_classes = Class.objects.count()
-
-    students_enrolled = Student.objects.count()
+    
     return JsonResponse({
         "total_instructors": total_instructors,
         "total_classes": total_classes,
@@ -69,20 +80,38 @@ def dashboard_data(request):
 
 
 
-class SignUpView(APIView):
-    def post(self, request):
-        serializer = SignUpSerializer(data=request.data)
-        if serializer.is_valid():
-            serializer.save()
-            return Response({"message": "User created successfully"}, status=status.HTTP_201_CREATED)
-        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
+# class SignUpView(APIView):
+#     def post(self, request):
+#         serializer = SignUpSerializer(data=request.data)
+#         if serializer.is_valid():
+#             serializer.save()
+#             return Response({"message": "User created successfully"}, status=status.HTTP_201_CREATED)
+#         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+@permission_classes([AllowAny])
 class UserListView(APIView):
     def get(self, request):
         users = SignUp.objects.all()  # ✅ Get all users
         serializer = SignUpSerializer(users, many=True)
         return Response(serializer.data, status=status.HTTP_200_OK)
 
+class InstructorListView(APIView):
+    def get(self, request):
+        instructors = SignUp.objects.filter(role='instructor')  # Get only instructors
+        serializer = SignUpSerializer(instructors, many=True)
+        return Response(serializer.data, status=status.HTTP_200_OK)
+
+    def post(self, request):
+        data = request.data.copy()  # ✅ Make a mutable copy of request data
+        data['role'] = 'instructor'  # ✅ Set role to 'instructor' before saving
+
+        serializer = SignUpSerializer(data=data)
+        if serializer.is_valid():
+            serializer.save()
+            return Response(serializer.data, status=status.HTTP_201_CREATED)
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+    
 class RetrieveUserView(APIView):
     """ Get user by ID """
     def get(self, request, user_id):
@@ -91,6 +120,8 @@ class RetrieveUserView(APIView):
         return Response(serializer.data, status=status.HTTP_200_OK)
 
 class RetrieveUpdateUserView(APIView):
+    parser_classes = [MultiPartParser, FormParser] 
+    
     """ Get and update user by ID """
     def get(self, request, user_id):
         user = get_object_or_404(SignUp, id=user_id)
@@ -119,35 +150,36 @@ class UpdateUserRoleView(APIView):
         return Response({"message": "User role updated successfully"}, status=status.HTTP_200_OK)
 
 
-class LoginView(APIView):
-    def post(self, request):
-        serializer = LoginSerializer(data=request.data)
-        if serializer.is_valid():
-            user = serializer.validated_data
+# class LoginView(APIView):
+#     def post(self, request):
+#         serializer = LoginSerializer(data=request.data)
+#         if serializer.is_valid():
+#             user = serializer.validated_data
+#             print(user)
+#             # Manually create a session
+#             request.session["user_id"] = user.id
+#             request.session["username"] = user.username
+#             request.session["role"] = user.role
+#             request.session.save()
 
-            # Manually create a session
-            request.session["user_id"] = user.id
-            request.session["username"] = user.username
-            request.session["role"] = user.role
-            request.session.save()
+#             csrf_token = get_token(request)  # Generate CSRF token
 
-            csrf_token = get_token(request)  # Generate CSRF token
+#             response = Response({
+#                 "message": "Login successful",
+#                 "id": user.id,
+#                 "username": user.username,
+#                 "role": user.role,
+#                 "csrf_token": csrf_token,
+#             }, status=status.HTTP_200_OK)
 
-            response = Response({
-                "message": "Login successful",
-                "id": user.id,
-                "username": user.username,
-                "role": user.role,
-                "csrf_token": csrf_token,
-            }, status=status.HTTP_200_OK)
+#             # Set session & CSRF cookies
+#             response.set_cookie("csrftoken", csrf_token, secure=True, httponly=False, samesite="None")
+#             response.set_cookie("sessionid", request.session.session_key, secure=True, httponly=True, samesite="None")
 
-            # Set session & CSRF cookies
-            response.set_cookie("csrftoken", csrf_token, secure=True, httponly=False, samesite="None")
-            response.set_cookie("sessionid", request.session.session_key, secure=True, httponly=True, samesite="None")
+#             return response
+#         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
-            return response
-        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
-
+@method_decorator(csrf_exempt, name='dispatch')
 class LogoutView(APIView):
     def post(self, request):
         logout(request)  # Clear session
@@ -155,179 +187,179 @@ class LogoutView(APIView):
         response.delete_cookie("sessionid")
         return response
 
+
+
 #class StudentViewSet(viewsets.ModelViewSet):
 #    permission_classes = [AllowAny]
 #    queryset = Student.objects.all()
 #    serializer_class = StudentSerializer
 
 #    def create(self, request, *args, **kwargs):
-        """Prevent duplicate student entries."""
+
 #        email_id = request.data.get("email_id")
 #        if Student.objects.filter(email_id=email_id).exists():
 #            return Response({"error": "Student with this email already exists"}, status=status.HTTP_400_BAD_REQUEST)
 #        return super().create(request, *args, **kwargs)
 
-class StudentViewSet(viewsets.ModelViewSet):
-    permission_classes = [AllowAny]
-    queryset = Student.objects.all()
-    serializer_class = StudentSerializer
-    parser_classes = (MultiPartParser, FormParser)
+# class StudentViewSet(viewsets.ModelViewSet):
+#     permission_classes = [AllowAny]
+#     queryset = Student.objects.all()
+#     serializer_class = StudentSerializer
+#     parser_classes = (MultiPartParser, FormParser)
 
-    def create(self, request, *args, **kwargs):
-        """Prevent duplicate student entries."""
-        email_id = request.data.get("email_id")
-        if Student.objects.filter(email_id=email_id).exists():
-            return Response({"error": "Student with this email already exists"}, status=status.HTTP_400_BAD_REQUEST)
-        return super().create(request, *args, **kwargs)
+#     def create(self, request, *args, **kwargs):
+#         """Prevent duplicate student entries."""
+#         email_id = request.data.get("email_id")
+#         if Student.objects.filter(email_id=email_id).exists():
+#             return Response({"error": "Student with this email already exists"}, status=status.HTTP_400_BAD_REQUEST)
+#         return super().create(request, *args, **kwargs)
 
-    def retrieve(self, request, pk=None):
-        """Get student by ID"""
-        student = get_object_or_404(Student, pk=pk)
-        serializer = self.get_serializer(student)
-        return Response(serializer.data, status=status.HTTP_200_OK)
+#     def retrieve(self, request, pk=None):
+#         """Get student by ID"""
+#         student = get_object_or_404(Student, pk=pk)
+#         serializer = self.get_serializer(student)
+#         return Response(serializer.data, status=status.HTTP_200_OK)
 
-    def update(self, request, pk=None):
-        """Update student by ID, handling file uploads"""
-        student = get_object_or_404(Student, pk=pk)
+#     def update(self, request, pk=None):
+#         """Update student by ID, handling file uploads"""
+#         student = get_object_or_404(Student, pk=pk)
 
-        # ✅ Merge request data with request.FILES for file uploads
-        data = request.data.copy()
-        if 'user_image' in request.FILES:
-            data['user_image'] = request.FILES['user_image']
+#         # ✅ Merge request data with request.FILES for file uploads
+#         data = request.data.copy()
+#         if 'user_image' in request.FILES:
+#             data['user_image'] = request.FILES['user_image']
 
-        serializer = self.get_serializer(student, data=data, partial=True)
+#         serializer = self.get_serializer(student, data=data, partial=True)
 
-        if serializer.is_valid():
-            serializer.save()
-            return Response(serializer.data, status=status.HTTP_200_OK)
-        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+#         if serializer.is_valid():
+#             serializer.save()
+#             return Response(serializer.data, status=status.HTTP_200_OK)
+#         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
 class EnrolledClassesView(APIView):
-    """Get all classes enrolled by a SignUp user"""
-
+    permission_classes = [AllowAny]
     def get(self, request, user_id):
+        print(f"View is being called for user_id: {user_id}")  # Debugging print
         signup_user = get_object_or_404(SignUp, id=user_id)
 
-        # Ensure the user is a student and has a linked Student profile
-        if signup_user.role != "student" or not signup_user.student_profile:
-            return Response({"error": "User is not a student or has no profile"}, status=status.HTTP_400_BAD_REQUEST)
+        if signup_user.role != "student":
+            return Response({"error": "User is not a student"}, status=status.HTTP_400_BAD_REQUEST)
 
-        # Get all classes where the student is enrolled
-        enrolled_classes = Class.objects.filter(students=signup_user.student_profile)
-
+        enrolled_classes = Class.objects.filter(students=signup_user)
         serializer = ClassSerializer(enrolled_classes, many=True)
+
         return Response(serializer.data, status=status.HTTP_200_OK)
 
 
-class ClassViewSet(viewsets.ModelViewSet):
-    permission_classes = [AllowAny]
-    queryset = Class.objects.all()
-    serializer_class = ClassSerializer
-    parser_classes = (MultiPartParser, FormParser)
+# class ClassViewSet(viewsets.ModelViewSet):
+#     permission_classes = [AllowAny]
+#     queryset = Class.objects.all()
+#     serializer_class = ClassSerializer
+#     parser_classes = (MultiPartParser, FormParser)
 
-    def create(self, request, *args, **kwargs):
-        """Create a new class using SignUp instead of Student."""
-        data = request.data.copy()
+#     def create(self, request, *args, **kwargs):
+#         """Create a new class using SignUp instead of Student."""
+#         data = request.data.copy()
 
-        course_id = data.get("course")
-        instructor_id = data.get("instructor")
+#         course_id = data.get("course")
+#         instructor_id = data.get("instructor")
 
-        if not course_id or not instructor_id:
-            return Response({"error": "Course and Instructor IDs are required"}, status=status.HTTP_400_BAD_REQUEST)
+#         if not course_id or not instructor_id:
+#             return Response({"error": "Course and Instructor IDs are required"}, status=status.HTTP_400_BAD_REQUEST)
 
-        try:
-            course = Course.objects.get(id=course_id)
-            instructor = Instructor.objects.get(id=instructor_id)
-        except (Course.DoesNotExist, Instructor.DoesNotExist) as e:
-            return Response({"error": f"Invalid course or instructor ID: {e}"}, status=status.HTTP_400_BAD_REQUEST)
+#         try:
+#             course = Course.objects.get(id=course_id)
+#             instructor = Instructor.objects.get(id=instructor_id)
+#         except (Course.DoesNotExist, Instructor.DoesNotExist) as e:
+#             return Response({"error": f"Invalid course or instructor ID: {e}"}, status=status.HTTP_400_BAD_REQUEST)
 
-        class_instance = Class(
-            course=course,
-            instructor=instructor,
-            class_date=data.get("class_date"),
-            class_joining_link=data.get("class_joining_link"),
-        )
+#         class_instance = Class(
+#             course=course,
+#             instructor=instructor,
+#             class_date=data.get("class_date"),
+#             class_joining_link=data.get("class_joining_link"),
+#         )
 
-        # Handle students (ManyToManyField using SignUp model)
-        student_ids = [data.get(f"students[{i}]") for i in range(len(data.keys())) if f"students[{i}]" in data]
+#         # Handle students (ManyToManyField using SignUp model)
+#         student_ids = [data.get(f"students[{i}]") for i in range(len(data.keys())) if f"students[{i}]" in data]
 
-        if student_ids:
-            students = SignUp.objects.filter(id__in=student_ids)
-            if students.count() != len(student_ids):
-                return Response({"error": "Some student IDs are invalid"}, status=status.HTTP_400_BAD_REQUEST)
+#         if student_ids:
+#             students = SignUp.objects.filter(id__in=student_ids)
+#             if students.count() != len(student_ids):
+#                 return Response({"error": "Some student IDs are invalid"}, status=status.HTTP_400_BAD_REQUEST)
 
-            class_instance.save()
-            class_instance.students.set(students)  # Assign students to class after saving
+#             class_instance.save()
+#             class_instance.students.set(students)  # Assign students to class after saving
 
-        study_material = request.FILES.get('study_material')
-        if study_material:
-            class_instance.study_material = study_material
+#         study_material = request.FILES.get('study_material')
+#         if study_material:
+#             class_instance.study_material = study_material
 
-        class_instance.save()
+#         class_instance.save()
 
-        return Response({
-            "id": class_instance.id,
-            "course": class_instance.course.id,
-            "instructor": class_instance.instructor.id,
-            "class_date": class_instance.class_date,
-            "class_joining_link": class_instance.class_joining_link,
-            "students": [student.id for student in class_instance.students.all()],
-            "study_material": class_instance.study_material.url if class_instance.study_material else None,
-        }, status=status.HTTP_201_CREATED)
+#         return Response({
+#             "id": class_instance.id,
+#             "course": class_instance.course.id,
+#             "instructor": class_instance.instructor.id,
+#             "class_date": class_instance.class_date,
+#             "class_joining_link": class_instance.class_joining_link,
+#             "students": [student.id for student in class_instance.students.all()],
+#             "study_material": class_instance.study_material.url if class_instance.study_material else None,
+#         }, status=status.HTTP_201_CREATED)
 
-    def retrieve(self, request, *args, **kwargs):
-        """Get a class and show payment status for each student"""
-        instance = self.get_object()
-        serializer = self.get_serializer(instance)
-        payment_status = instance.get_student_payment_status()
-        data = serializer.data
-        data['student_payment_status'] = payment_status
-        return Response(data)
+#     def retrieve(self, request, *args, **kwargs):
+#         """Get a class and show payment status for each student"""
+#         instance = self.get_object()
+#         serializer = self.get_serializer(instance)
+#         payment_status = instance.get_student_payment_status()
+#         data = serializer.data
+#         data['student_payment_status'] = payment_status
+#         return Response(data)
 
-    def update(self, request, *args, **kwargs):
-        """Update class details including course, instructor, date, and students from SignUp."""
-        instance = self.get_object()
-        update_data = request.data.copy()
+#     def update(self, request, *args, **kwargs):
+#         """Update class details including course, instructor, date, and students from SignUp."""
+#         instance = self.get_object()
+#         update_data = request.data.copy()
 
-        if 'course' in update_data:
-            course_data = update_data.pop('course')
-            if isinstance(course_data, list):
-                course_data = course_data[0]
-            try:
-                course = Course.objects.get(id=course_data)
-                instance.course = course
-            except Course.DoesNotExist:
-                return Response({"error": "Course not found"}, status=status.HTTP_400_BAD_REQUEST)
+#         if 'course' in update_data:
+#             course_data = update_data.pop('course')
+#             if isinstance(course_data, list):
+#                 course_data = course_data[0]
+#             try:
+#                 course = Course.objects.get(id=course_data)
+#                 instance.course = course
+#             except Course.DoesNotExist:
+#                 return Response({"error": "Course not found"}, status=status.HTTP_400_BAD_REQUEST)
 
-        if 'instructor' in update_data:
-            instructor_data = update_data.pop('instructor')
-            if isinstance(instructor_data, list):
-                instructor_data = instructor_data[0]
-            try:
-                instructor = Instructor.objects.get(id=instructor_data)
-                instance.instructor = instructor
-            except Instructor.DoesNotExist:
-                return Response({"error": "Instructor not found"}, status=status.HTTP_400_BAD_REQUEST)
+#         if 'instructor' in update_data:
+#             instructor_data = update_data.pop('instructor')
+#             if isinstance(instructor_data, list):
+#                 instructor_data = instructor_data[0]
+#             try:
+#                 instructor = Instructor.objects.get(id=instructor_data)
+#                 instance.instructor = instructor
+#             except Instructor.DoesNotExist:
+#                 return Response({"error": "Instructor not found"}, status=status.HTTP_400_BAD_REQUEST)
 
-        # Handle updating students from SignUp
-        if 'students' in update_data:
-            students_data = update_data.pop('students')
-            instance.students.clear()
-            for student_id in students_data:
-                try:
-                    student_instance = SignUp.objects.get(id=student_id)
-                    instance.students.add(student_instance)
-                except SignUp.DoesNotExist:
-                    return Response({"error": f"Student with ID {student_id} not found"}, status=status.HTTP_400_BAD_REQUEST)
+#         # Handle updating students from SignUp
+#         if 'students' in update_data:
+#             students_data = update_data.pop('students')
+#             instance.students.clear()
+#             for student_id in students_data:
+#                 try:
+#                     student_instance = SignUp.objects.get(id=student_id)
+#                     instance.students.add(student_instance)
+#                 except SignUp.DoesNotExist:
+#                     return Response({"error": f"Student with ID {student_id} not found"}, status=status.HTTP_400_BAD_REQUEST)
 
-        for key, value in update_data.items():
-            setattr(instance, key, value)
-        instance.save()
+#         for key, value in update_data.items():
+#             setattr(instance, key, value)
+#         instance.save()
 
-        return Response({
-            "message": "Class updated successfully",
-            "data": self.get_serializer(instance).data
-        }, status=status.HTTP_200_OK)
+#         return Response({
+#             "message": "Class updated successfully",
+#             "data": self.get_serializer(instance).data
+#         }, status=status.HTTP_200_OK)
 
 
 
@@ -346,26 +378,26 @@ class StudentPaymentStatusView(APIView):
         return Response({"student_email": email, "payment_status": payment_info})
 
 
-class InstructorViewSet(viewsets.ModelViewSet):
-    permission_classes = [AllowAny]
-    queryset = Instructor.objects.all()
-    serializer_class = InstructorSerializer
+# class InstructorViewSet(viewsets.ModelViewSet):
+#     permission_classes = [AllowAny]
+#     queryset = Instructor.objects.all()
+#     serializer_class = InstructorSerializer
 
-class InstructorCreateView(APIView):
-    permission_classes = [AllowAny]
-    def post(self, request):
-        serializer = InstructorSerializer(data=request.data)
-        if serializer.is_valid():
-            serializer.save()
-            return Response(serializer.data, status=status.HTTP_201_CREATED)
-        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+# class InstructorCreateView(APIView):
+#     permission_classes = [AllowAny]
+#     def post(self, request):
+#         serializer = InstructorSerializer(data=request.data)
+#         if serializer.is_valid():
+#             serializer.save()
+#             return Response(serializer.data, status=status.HTTP_201_CREATED)
+#         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
-class InstructorListView(APIView):
-    permission_classes = [AllowAny]
-    def get(self, request):
-        instructors = Instructor.objects.all()
-        serializer = InstructorSerializer(instructors, many=True)
-        return Response(serializer.data)
+# class InstructorListView(APIView):
+#     permission_classes = [AllowAny]
+#     def get(self, request):
+#         instructors = Instructor.objects.all()
+#         serializer = InstructorSerializer(instructors, many=True)
+#         return Response(serializer.data)
 
 
 class CourseViewSet(viewsets.ReadOnlyModelViewSet):
@@ -604,3 +636,135 @@ def sitemap_data(request):
 
     # Return the sitemap XML response
     return HttpResponse(xml_content, content_type='application/xml')
+
+
+
+# Login View
+class LoginView(APIView):
+    permission_classes = [AllowAny]
+
+    def post(self, request, *args, **kwargs):
+        username = request.data.get("username")
+        password = request.data.get("password")
+
+        try:
+            # Fetch user from the Signup table
+            user = SignUp.objects.get(username=username)
+
+            # Check if the entered password matches the stored password
+            if check_password(password, user.password):  # Ensure passwords are hashed
+                # Generate a random token manually
+                token = secrets.token_hex(32)  # Generates a secure 64-character token
+                
+                # Store the token in the user's record (you need a `token` field in your model)
+                user.token = token  
+                user.save()
+
+                return Response({
+                    "token": token,
+                    "user_id": user.id,
+                    "username": user.username,
+                    "role": user.role  # Ensure role is present in the Signup table
+                })
+            else:
+                return Response({"error": "Invalid credentials"}, status=status.HTTP_401_UNAUTHORIZED)
+        
+        except SignUp.DoesNotExist:
+            return Response({"error": "User not found"}, status=status.HTTP_404_NOT_FOUND)
+
+
+
+# CRUD for SignUp Model
+class SignUpCreateView(generics.CreateAPIView):
+    permission_classes = [AllowAny]
+    queryset = SignUp.objects.all()
+    serializer_class = SignUpSerializer
+
+class SignUpUpdateView(generics.UpdateAPIView):
+    permission_classes = [AllowAny]
+    queryset = SignUp.objects.all()
+    serializer_class = SignUpSerializer
+    lookup_field = 'pk'
+
+class SignUpDeleteView(generics.DestroyAPIView):
+    permission_classes = [AllowAny]
+    queryset = SignUp.objects.all()
+    lookup_field = 'pk'
+
+# CRUD for Class Model
+class ClassCreateView(generics.CreateAPIView):
+    permission_classes = [AllowAny]
+    queryset = Class.objects.all()
+    serializer_class = ClassSerializer
+
+    def create(self, request, *args, **kwargs):
+        students = request.data.get('students', [])
+        instructor_id = request.data.get('instructor')
+        course_id = request.data.get('course')
+        
+        print('student :', student)
+        # Validate students
+        valid_students = []
+        for student_id in students:
+            student = SignUp.objects.filter(id=student_id, role='student').first()
+            if student:
+                lead = Leads.objects.filter(email=student.email, course_name=course_id).first()
+                if lead and lead.payment_status:
+                    valid_students.append(student_id)
+                else:
+                    return Response({"error": f"Student {student.username} has not completed payment."}, 
+                                    status=status.HTTP_400_BAD_REQUEST)
+            else:
+                return Response({"error": "Only students can be added to the class."}, 
+                                status=status.HTTP_400_BAD_REQUEST)
+        
+        # Validate instructor
+        if instructor_id:
+            instructor = SignUp.objects.filter(id=instructor_id, role='instructor').first()
+            if not instructor:
+                return Response({"error": "Only instructors can be assigned to the class."}, 
+                                status=status.HTTP_400_BAD_REQUEST)
+        
+        return super().create(request, *args, **kwargs)
+
+    def post(self, request, *args, **kwargs):
+        data = request.data.copy()  # Make a mutable copy of the data
+        
+        # ✅ Convert students from JSON string to a Python list
+        if isinstance(data.get("students"), str):
+            try:
+                data["students"] = json.loads(data["students"])  # Convert JSON string to list
+            except json.JSONDecodeError:
+                return Response({"error": "Invalid students format"}, status=status.HTTP_400_BAD_REQUEST)
+
+        serializer = ClassSerializer(data=data)
+        if serializer.is_valid():
+            serializer.save()
+            return Response(serializer.data, status=status.HTTP_201_CREATED)
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+    
+    
+    
+    
+class ClassUpdateView(generics.UpdateAPIView):
+    permission_classes = [AllowAny]
+    queryset = Class.objects.all()
+    serializer_class = ClassSerializer
+    lookup_field = 'pk'
+
+class ClassDeleteView(generics.DestroyAPIView):
+    permission_classes = [AllowAny]
+    queryset = Class.objects.all()
+    lookup_field = 'pk'
+
+class ClassListView(generics.ListAPIView):
+    permission_classes = [AllowAny]
+    queryset = Class.objects.all()
+    serializer_class = ClassSerializer
+
+class StudentListView(APIView):
+    permission_classes = [AllowAny]
+    def get(self, request):
+        students = SignUp.objects.filter(role='student')  # Get only students
+        serializer = SignUpSerializer(students, many=True)
+        return Response(serializer.data, status=status.HTTP_200_OK)
