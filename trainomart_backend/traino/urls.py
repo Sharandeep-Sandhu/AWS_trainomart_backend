@@ -1,23 +1,14 @@
 from django.conf import settings
 from django.urls import path, include
 from rest_framework.routers import DefaultRouter
-<<<<<<< HEAD
-from .views import CourseViewSet, BlogViewSet, LeadViewSet, ContactMessageViewSet, BusinessLeadsViewSet, BlogDetailView, CourseRegistrationView, sitemap_data, StudentPaymentStatusView, dashboard_data, get_csrf_token, LogoutView, UserListView, UpdateUserRoleView, student_profile, RetrieveUserView, RetrieveUpdateUserView, UpdateUserRoleView, EnrolledClassesView, ClassListView #, InstructorCreateView, InstructorListView, InstructorViewSet, StudentViewSet, ClassViewSet,SignUpView, LoginView
-=======
 #from .views import CourseViewSet, BlogViewSet, LeadViewSet, ContactMessageViewSet, BusinessLeadsViewSet, BlogDetailView, CourseRegistrationView, sitemap_data, InstructorCreateView, InstructorListView, InstructorViewSet, StudentViewSet, ClassViewSet, StudentPaymentStatusView, dashboard_data, LoginView, SignUpView, get_csrf_token, LogoutView, UserListView, UpdateUserRoleView, student_profile, RetrieveUserView, RetrieveUpdateUserView, UpdateUserRoleView, EnrolledClassesView
 from .views import CourseViewSet, BlogViewSet, LeadViewSet, ContactMessageViewSet, BusinessLeadsViewSet, BlogDetailView, CourseRegistrationView, sitemap_data, StudentPaymentStatusView, dashboard_data, get_csrf_token, LogoutView, UserListView, UpdateUserRoleView, student_profile, RetrieveUserView, RetrieveUpdateUserView, LoginView, UpdateUserRoleView, EnrolledClassesView, ClassListView #, InstructorCreateView, InstructorListView, InstructorViewSet, StudentViewSet, ClassViewSet,SignUpView, LoginView
->>>>>>> 91c34ef95915a2bbee418a595d4201187a8bb0b9
 from . import views
 from .views import (
     SignUpCreateView, SignUpUpdateView, SignUpDeleteView,
     ClassCreateView, ClassUpdateView, ClassDeleteView, InstructorListView,
     StudentListView
 )
-<<<<<<< HEAD
-
-
-=======
->>>>>>> 91c34ef95915a2bbee418a595d4201187a8bb0b9
 from django.conf.urls.static import static
 
 router = DefaultRouter()
@@ -26,15 +17,9 @@ router.register(r'blogs', BlogViewSet, basename='blog')
 router.register(r'leads', LeadViewSet)
 router.register(r'contact', ContactMessageViewSet)
 router.register(r'quote', BusinessLeadsViewSet, basename='quote')
-<<<<<<< HEAD
-# router.register(r'instructors', InstructorViewSet, basename='instructor')
-# router.register(r'students', StudentViewSet, basename='student')
-# router.register(r'classes', ClassViewSet, basename='class')
-=======
 #router.register(r'instructors', InstructorViewSet, basename='instructor')
 #router.register(r'students', StudentViewSet, basename='student')
 #router.register(r'classes', ClassViewSet, basename='class')
->>>>>>> 91c34ef95915a2bbee418a595d4201187a8bb0b9
 
 
 urlpatterns = [
@@ -44,24 +29,17 @@ urlpatterns = [
     path('api/courses/<slug:slug>/', CourseViewSet.as_view({'get': 'get_course_by_slug'}), name='course-detail-by-slug'),
     path('api/register/', CourseRegistrationView.as_view(), name='course_registration'),
     path('api/sitemap/', views.sitemap_data, name='sitemap_data'), 
-<<<<<<< HEAD
     # path('api/instructors/', InstructorListView.as_view(), name='instructor-list'),
     # path('api/instructors/create/', InstructorCreateView.as_view(), name='instructor-create'),
-=======
  #   path('api/instructors/', InstructorListView.as_view(), name='instructor-list'),
  #   path('api/instructors/create/', InstructorCreateView.as_view(), name='instructor-create'),
->>>>>>> 91c34ef95915a2bbee418a595d4201187a8bb0b9
     path('api/student-payment-status/<str:email>/', StudentPaymentStatusView.as_view(), name='student-payment-status'),
     path("api/dashboard/", dashboard_data, name="dashboard-data"),
     path("api/csrf/", get_csrf_token, name="csrf_token"),
-    path('api/students/profile/', student_profile, name='student-profile'),  # ✅ Route to get logged-in student
-<<<<<<< HEAD
-    # path("api/signup/", SignUpView.as_view(), name="signup"),
+    path('api/students/profile/', student_profile, name='student-profile'),  # ✅ Route to get logged-in studentSSSSSSSSSSSSSapi/signup/", SignUpView.as_view(), name="signup"),
     # path("api/login/", LoginView.as_view(), name="login"),
-=======
 #    path("api/signup/", SignUpView.as_view(), name="signup"),
     path("api/login/", LoginView.as_view(), name="login"),
->>>>>>> 91c34ef95915a2bbee418a595d4201187a8bb0b9
     path("api/logout/", LogoutView.as_view(), name="logout"),
     path('api/instructors/', InstructorListView.as_view(), name='instructor-list'),
     path("api/users/", UserListView.as_view(), name="get_all_users"),  # ✅ Get all users
@@ -72,22 +50,12 @@ urlpatterns = [
     path("api/users/<int:user_id>/enrolled-classes/", EnrolledClassesView.as_view(), name="enrolled-classes"),
     path('api/students/', StudentListView.as_view(), name='student-list'),
 
-<<<<<<< HEAD
-    
-    
-    path('signup/create/', SignUpCreateView.as_view(), name='signup-create'),
-    path('signup/update/<int:pk>/', SignUpUpdateView.as_view(), name='signup-update'),
-    path('signup/delete/<int:pk>/', SignUpDeleteView.as_view(), name='signup-delete'),
-
-    path('api/class/', ClassListView.as_view(), name='class-create'),
-=======
     path('api/signup/create/', SignUpCreateView.as_view(), name='signup-create'),
     path('api/signup/update/<int:pk>/', SignUpUpdateView.as_view(), name='signup-update'),
     path('api/signup/delete/<int:pk>/', SignUpDeleteView.as_view(), name='signup-delete'),
 
     path('api/classes/', ClassListView.as_view(), name='class-list'),  # GET - List all classes
     path('api/class/post/', ClassCreateView.as_view(), name='class-create'),
->>>>>>> 91c34ef95915a2bbee418a595d4201187a8bb0b9
     path('api/class/create/', ClassCreateView.as_view(), name='class-create'),
     path('api/class/update/<int:pk>/', ClassUpdateView.as_view(), name='class-update'),
     path('api/class/delete/<int:pk>/', ClassDeleteView.as_view(), name='class-delete'),
