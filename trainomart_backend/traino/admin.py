@@ -1,5 +1,9 @@
 from django.contrib import admin
+<<<<<<< HEAD
 from .models import Course, Blog, Leads, ContactMessage, BusinessLeads, CourseRegistration, Class, SignUp #, Instructor, Student
+=======
+from .models import Course, Blog, Leads, ContactMessage, BusinessLeads, CourseRegistration, Class, SignUp #, Instructor, Student,
+>>>>>>> 91c34ef95915a2bbee418a595d4201187a8bb0b9
 from django.contrib.auth.admin import UserAdmin
 
 class SignUpAdmin(admin.ModelAdmin):
@@ -8,17 +12,32 @@ class SignUpAdmin(admin.ModelAdmin):
     list_filter = ('role',)  # Filter by role
     ordering = ('id',)  # Order by ID
 
+<<<<<<< HEAD
 # @admin.register(Instructor)
 # class InstructorAdmin(admin.ModelAdmin):
 #     list_display = ('name', 'email', 'phone', 'rate')  # Display these fields in the list view
 #     search_fields = ('name', 'email', 'phone')  # Enable search functionality
 #     list_filter = ('rate',) 
+=======
+#@admin.register(Instructor)
+#class InstructorAdmin(admin.ModelAdmin):
+#    list_display = ('name', 'email', 'phone', 'rate')  # Display these fields in the list view
+#    search_fields = ('name', 'email', 'phone')  # Enable search functionality
+#    list_filter = ('rate',) 
+>>>>>>> 91c34ef95915a2bbee418a595d4201187a8bb0b9
 
 
+<<<<<<< HEAD
 # @admin.register(Student)
 # class StudentAdmin(admin.ModelAdmin):
 #     list_display = ('id', 'first_name', 'last_name', 'email_id', 'phone_number', 'alternative_phone_number', 'alternative_email', 'company', 'experience', 'student_image', 'address')
 #     search_fields = ('first_name', 'last_name', 'email_id')
+=======
+#@admin.register(Student)
+#class StudentAdmin(admin.ModelAdmin):
+#    list_display = ('id', 'first_name', 'last_name', 'email_id', 'phone_number', 'alternative_phone_number', 'alternative_email', 'company', 'experience', 'student_image', 'address')
+#    search_fields = ('first_name', 'last_name', 'email_id')
+>>>>>>> 91c34ef95915a2bbee418a595d4201187a8bb0b9
 
 
 @admin.register(Class)
@@ -34,7 +53,11 @@ class ClassAdmin(admin.ModelAdmin):
     display_student_payment_status.short_description = "Student Payment Status"
 
 class CourseAdmin(admin.ModelAdmin):
+<<<<<<< HEAD
     list_display = ('course_name', 'category', 'orignal_price', 'price', 'Canonical_tag', 'duration', 'is_featured', 'tags', 'last_updated', 'meta_title', 'meta_description', 'slug', 'buy_button_id')
+=======
+    list_display = ('course_name', 'category', 'orignal_price', 'price', 'canonical_tag', 'duration', 'is_featured', 'tags', 'last_updated', 'meta_title', 'meta_description', 'slug', 'created_at', 'buy_button_id')
+>>>>>>> 91c34ef95915a2bbee418a595d4201187a8bb0b9
     list_filter = ('is_featured', 'language', 'skill_level')
     search_fields = ('course_name', 'description', 'slug')
     ordering = ('last_updated',)
@@ -55,17 +78,30 @@ class CourseAdmin(admin.ModelAdmin):
         'skill_level',
         'tags',
         'is_featured',
+<<<<<<< HEAD
         'faq',
         'meta_title',
         'meta_description',
+=======
+	'faq',
+        'created_at',
+	'meta_title',
+	'meta_description',
+        'canonical_tag',
+>>>>>>> 91c34ef95915a2bbee418a595d4201187a8bb0b9
         'buy_button_id',
     )
 
 class BlogAdmin(admin.ModelAdmin):
     list_display = ('blog_title', 'updated_at', 'blog_image', 'category', 'slug', 'meta_title', 'meta_description', 'created_at', 'Canonical_tag')
     search_fields = ('blog_title', 'category')
+<<<<<<< HEAD
     ordering = ('blog_title','updated_at')
     fields = ('blog_title', 'slug', 'blog_image', 'category', 'blog_data', 'meta_title', 'meta_description', 'created_at', 'Canonical_tag')
+=======
+    ordering = ('blog_title', 'updated_at', 'created_at')
+    fields = ('blog_title', 'slug', 'blog_image', 'category', 'blog_data', 'meta_title', 'meta_description', 'Canonical_tag')
+>>>>>>> 91c34ef95915a2bbee418a595d4201187a8bb0b9
 
 @admin.register(BusinessLeads)
 class BusinessLeadsAdmin(admin.ModelAdmin):

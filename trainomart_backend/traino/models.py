@@ -28,11 +28,16 @@ class Course(models.Model):
     is_featured = models.BooleanField(default=False)
     faq = models.TextField(max_length=500000, blank=True, null=True)
     buy_button_id = models.CharField(max_length=344, blank=True, null=True)
+    created_at = models.DateTimeField(auto_now_add=True)  # Automatically sets when first created
     updated_at = models.DateTimeField(auto_now=True)
     meta_title = models.CharField(max_length=2555, help_text="Title for SEO and social sharing", null=True, blank=True)
     meta_description = models.TextField(max_length=5000, help_text="Description for SEO and social sharing", null=True, blank=True)
     slug = models.SlugField(max_length=250, unique=True, blank=True, null=True)
+<<<<<<< HEAD
     Canonical_tag = models.CharField(max_length=2555, help_text="Canonical for SEO and social sharing", null=True, blank=True)
+=======
+    canonical_tag = models.CharField(max_length=2555, help_text="Canonical for SEO and social sharing", null=True, blank=True)
+>>>>>>> 91c34ef95915a2bbee418a595d4201187a8bb0b9
 
     def save(self, *args, **kwargs):
         if not self.slug:
@@ -55,6 +60,10 @@ class Blog(models.Model):
     meta_description = models.TextField(max_length=5000, help_text="Description for SEO and social sharing", null=True, blank=True)
     Canonical_tag = models.CharField(max_length=2555, help_text="Canonical for SEO and social sharing", null=True, blank=True)
     created_at = models.DateTimeField(auto_now_add=True)  # Automatically sets when first created
+<<<<<<< HEAD
+=======
+
+>>>>>>> 91c34ef95915a2bbee418a595d4201187a8bb0b9
 
     def save(self, *args, **kwargs):
         if not self.slug:
@@ -163,16 +172,23 @@ class SignUp(models.Model):
     phone_number = models.CharField(max_length=15)
     password = models.CharField(max_length=255)  # Store hashed passwords!
     role = models.CharField(max_length=20, choices=ROLE_CHOICES, default='student')
+<<<<<<< HEAD
     
     # Student Fields
+=======
+>>>>>>> 91c34ef95915a2bbee418a595d4201187a8bb0b9
     student_alternative_phone_number = models.CharField(max_length=150, blank=True, null=True)
     student_alternative_email = models.EmailField(blank=True, null=True)
     student_company = models.TextField(max_length=255, blank=True, null=True)
     student_experience = models.TextField(blank=True, null=True)
+<<<<<<< HEAD
     student_image = models.ImageField(upload_to='student_images/', blank=True, null=True) 
 
 
     # Instructor Fields
+=======
+    student_image = models.ImageField(upload_to='student_images/', blank=True, null=True)
+>>>>>>> 91c34ef95915a2bbee418a595d4201187a8bb0b9
     rate = models.DecimalField(max_digits=10, decimal_places=2, blank=True, null=True)
     address = models.TextField(blank=True, null=True)
     skill_set = models.TextField(blank=True, null=True)
