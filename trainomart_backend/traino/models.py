@@ -29,11 +29,13 @@ class Course(models.Model):
     is_featured = models.BooleanField(default=False)
     faq = models.TextField(max_length=500000, blank=True, null=True)
     buy_button_id = models.CharField(max_length=344, blank=True, null=True)
+    created_at = models.DateTimeField(auto_now_add=True)  # Automatically sets when first created
     updated_at = models.DateTimeField(auto_now=True)
     # New fields for SEO meta tags
     meta_title = models.CharField(max_length=2555, help_text="Title for SEO and social sharing", null=True, blank=True)
     meta_description = models.TextField(max_length=5000, help_text="Description for SEO and social sharing", null=True, blank=True)
     slug = models.SlugField(max_length=250, unique=True, blank=True, null=True)
+    canonical_tag = models.CharField(max_length=2555, help_text="Canonical for SEO and social sharing", null=True, blank=True)
 
     def save(self, *args, **kwargs):
         if not self.slug:
@@ -54,6 +56,8 @@ class Blog(models.Model):
     updated_at = models.DateTimeField(auto_now=True)
     meta_title = models.CharField(max_length=2555, help_text="Title for SEO and social sharing", null=True, blank=True)
     meta_description = models.TextField(max_length=5000, help_text="Description for SEO and social sharing", null=True, blank=True)
+    Canonical_tag = models.CharField(max_length=2555, help_text="Canonical for SEO and social sharing", null=True, blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)  # Automatically sets when first created
 
 
     def save(self, *args, **kwargs):
@@ -158,19 +162,22 @@ class SignUp(models.Model):
     phone_number = models.CharField(max_length=15)
     password = models.CharField(max_length=255)  # Store hashed passwords!
     role = models.CharField(max_length=20, choices=ROLE_CHOICES, default='student')
-    alternative_phone_number = models.CharField(max_length=150, blank=True, null=True)
-    alternative_email = models.EmailField(blank=True, null=True)
-    company = models.TextField(max_length=255, blank=True, null=True)
-    experience = models.TextField(blank=True, null=True)
-    user_image = models.ImageField(upload_to='student_images/', blank=True, null=True) 
-    student_profile = models.OneToOneField(Student, on_delete=models.CASCADE, null=True, blank=True, related_name="signup_user")
-
+    student_alternative_phone_number = models.CharField(max_length=150, blank=True, null=True)
+    student_alternative_email = models.EmailField(blank=True, null=True)
+    student_company = models.TextField(max_length=255, blank=True, null=True)
+    student_experience = models.TextField(blank=True, null=True)
+    student_image = models.ImageField(upload_to='student_images/', blank=True, null=True)
+    rate = models.DecimalField(max_digits=10, decimal_places=2, blank=True, null=True)
+    address = models.TextField(blank=True, null=True)
+    skill_set = models.TextField(blank=True, null=True)
+    
     def __str__(self):
         return f"{self.username} - {self.role}"
 
 class Class(models.Model):
-    students = models.ManyToManyField(SignUp, related_name='classes', limit_choices_to={'role': 'student'})
-    instructor = models.ForeignKey(Instructor, on_delete=models.CASCADE, related_name='classes', blank=True, null=True)
+    class_name = models.CharField(max_length=500)
+    students = models.ManyToManyField(SignUp, related_name="enrolled_classes")
+    instructor = models.ForeignKey(SignUp, on_delete=models.CASCADE, related_name='classes', blank=True, null=True)
     course = models.ForeignKey(Course, on_delete=models.CASCADE, related_name='classes', blank=True, null=True)
     class_date = models.DateTimeField(blank=True, null=True)
     study_material = models.FileField(upload_to='study_materials/', blank=True, null=True)
